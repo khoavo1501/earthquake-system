@@ -13,6 +13,9 @@ import {
 import axios from 'axios';
 import dayjs from 'dayjs';
 
+// Lấy API_HOST từ biến môi trường hoặc tự động detect
+const API_HOST = import.meta.env.VITE_API_HOST || window.location.hostname;
+
 // Import components
 import TimeSeriesChart from './components/TimeSeriesChart';
 import ScatterPlot from './components/ScatterPlot';
@@ -26,7 +29,6 @@ import PredictionChart from './components/PredictionChart';
 import ClusterMap from './components/ClusterMap';
 import StatsCards from './components/StatsCards';
 import RealtimeStatus from './components/RealtimeStatus';
-import LatestEarthquakes from './components/LatestEarthquakes';
 
 const { Header, Content, Sider } = Layout;
 const { RangePicker } = DatePicker;
@@ -57,14 +59,12 @@ function App() {
   const [loadModalVisible, setLoadModalVisible] = useState(false);
   const [loadYears, setLoadYears] = useState(1);
   const [loadingData, setLoadingData] = useState(false);
-  const [realtimeData, setRealtimeData] = useState(null);
-  const [autoRefresh, setAutoRefresh] = useState(true);
-  const [refreshInterval, setRefreshInterval] = useState(60000); // 60 seconds
+  const [lastDataUpdate, setLastDataUpdate] = useState(null);
 
-  // Handle realtime data update
-  const handleRealtimeUpdate = (data) => {
-    setRealtimeData(data);
-  };
+  // Cập nhật lastDataUpdate khi app load (thời điểm hiện tại)
+  useEffect(() => {
+    setLastDataUpdate(new Date());
+  }, []);
 
   // Quick filter for date range
   const setQuickDateRange = (days) => {
@@ -87,22 +87,23 @@ function App() {
       let endpoint = '';
       switch(serviceName) {
         case 'analysis':
-          endpoint = 'http://localhost:8002/api/analysis/timeseries?period=daily';
+          endpoint = `http://${API_HOST}:8002/api/analysis/timeseries?period=daily`;
           break;
         case 'clustering':
-          endpoint = 'http://localhost:8003/api/clusters/geographic';
+          endpoint = `http://${API_HOST}:8003/api/clusters/geographic`;
           break;
         case 'prediction':
-          endpoint = 'http://localhost:8004/api/predictions/forecast?days=7';
+          endpoint = `http://${API_HOST}:8004/api/predictions/forecast?days=7`;
           break;
         case 'database':
-          endpoint = 'http://localhost:8001/api/earthquakes/stats';
+          endpoint = `http://${API_HOST}:8001/api/earthquakes/stats`;
           break;
         default:
-          endpoint = 'http://localhost:8001/api/earthquakes/stats';
+          endpoint = `http://${API_HOST}:8001/api/earthquakes/stats`;
       }
       
       await axios.get(endpoint);
+      setLastDataUpdate(new Date());
       message.success(`${serviceName} data reloaded successfully!`);
     } catch (error) {
       message.error(`Failed to reload ${serviceName} data: ${error.message}`);
@@ -124,12 +125,13 @@ function App() {
       message.loading(`Loading ${loadYears} year(s) of historical data...`, 0);
       
       // Call data ingestion service to load historical data
-      const response = await axios.post('http://localhost:8001/api/earthquakes/load-historical', {
+      const response = await axios.post(`http://${API_HOST}:8001/api/earthquakes/load-historical`, {
         start_date: startDate.toISOString().split('T')[0],
         end_date: endDate.toISOString().split('T')[0]
       });
       
       message.destroy();
+      setLastDataUpdate(new Date());
       message.success(`Successfully loaded ${loadYears} year(s) of data!`);
     } catch (error) {
       message.destroy();
@@ -182,18 +184,10 @@ function App() {
             <StatsCards dateRange={dateRange} />
             
             <Row gutter={[16, 16]}>
-              <Col span={16}>
+              <Col span={24}>
                 <Card title="Earthquake Count Over Time">
                   <TimeSeriesChart {...commonProps} />
                 </Card>
-              </Col>
-              <Col span={8}>
-                <LatestEarthquakes 
-                  limit={8} 
-                  autoRefresh={autoRefresh} 
-                  refreshInterval={30000}
-                  compact={true}
-                />
               </Col>
             </Row>
 
@@ -397,11 +391,7 @@ function App() {
 
         <Content style={{ margin: '24px 16px', padding: 24, background: '#f0f2f5' }}>
           {/* Realtime Status Bar */}
-          <RealtimeStatus 
-            autoRefresh={autoRefresh}
-            refreshInterval={refreshInterval}
-            onDataUpdate={handleRealtimeUpdate}
-          />
+          <RealtimeStatus lastDataUpdate={lastDataUpdate} />
 
           {/* Quick Date Filters */}
           <Card 

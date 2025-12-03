@@ -2,6 +2,10 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Nhận biến API_HOST từ docker-compose
+ARG VITE_API_HOST=localhost
+ENV VITE_API_HOST=$VITE_API_HOST
+
 COPY package*.json ./
 RUN npm install
 

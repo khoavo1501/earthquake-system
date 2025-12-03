@@ -1,9 +1,22 @@
 import axios from 'axios';
 
-const DATABASE_API_URL = import.meta.env.VITE_DATABASE_API_URL || 'http://localhost:8001';
-const ANALYSIS_API_URL = import.meta.env.VITE_ANALYSIS_API_URL || 'http://localhost:8002';
-const CLUSTERING_API_URL = import.meta.env.VITE_CLUSTERING_API_URL || 'http://localhost:8003';
-const PREDICTION_API_URL = import.meta.env.VITE_PREDICTION_API_URL || 'http://localhost:8004';
+// Lấy API_HOST từ biến môi trường hoặc tự động detect từ URL
+const getApiHost = () => {
+  // Ưu tiên lấy từ biến môi trường
+  if (import.meta.env.VITE_API_HOST) {
+    return import.meta.env.VITE_API_HOST;
+  }
+  // Fallback: dùng hostname hiện tại
+  return window.location.hostname;
+};
+
+const API_HOST = getApiHost();
+
+// Các URL API - chỉ cần thay đổi API_HOST trong file .env
+const DATABASE_API_URL = `http://${API_HOST}:8001`;
+const ANALYSIS_API_URL = `http://${API_HOST}:8002`;
+const CLUSTERING_API_URL = `http://${API_HOST}:8003`;
+const PREDICTION_API_URL = `http://${API_HOST}:8004`;
 
 // Database API
 export const databaseAPI = {

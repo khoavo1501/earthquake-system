@@ -133,12 +133,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - VITE_API_HOST=${API_HOST:-localhost}
     container_name: earthquake-frontend
     environment:
-      REACT_APP_DATABASE_API_URL: http://localhost:8001
-      REACT_APP_ANALYSIS_API_URL: http://localhost:8002
-      REACT_APP_CLUSTERING_API_URL: http://localhost:8003
-      REACT_APP_PREDICTION_API_URL: http://localhost:8004
+      - VITE_API_HOST=${API_HOST:-localhost}
     ports:
       - "3000:3000"
     depends_on:

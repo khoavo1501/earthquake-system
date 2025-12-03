@@ -461,8 +461,32 @@ Output thành công:
 
 #### Bước 2: Chọn AMI (Hệ điều hành)
 
-Chọn **Ubuntu Server 22.04 LTS (Free tier eligible)**:
+Bạn có thể chọn **Ubuntu** hoặc **Amazon Linux**:
 
+**Option A: Amazon Linux 2023 (Khuyến nghị cho AWS)**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Application and OS Images (Amazon Machine Image)           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Quick Start:                                               │
+│  [Amazon Linux] [macOS] [Ubuntu] [Windows] [Red Hat]        │
+│        ↑                                                    │
+│   Click Amazon Linux                                        │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  🟢 Amazon Linux 2023 AMI                           │   │
+│  │     Free tier eligible                              │   │
+│  │     64-bit (x86)                                    │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│  User mặc định: ec2-user                                    │
+│  Package manager: yum / dnf                                 │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Option B: Ubuntu Server 22.04 LTS**
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Application and OS Images (Amazon Machine Image)           │
@@ -479,8 +503,13 @@ Chọn **Ubuntu Server 22.04 LTS (Free tier eligible)**:
 │  │     64-bit (x86)                                    │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
+│  User mặc định: ubuntu                                      │
+│  Package manager: apt                                       │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+💡 **Lưu ý**: Ghi nhớ bạn chọn AMI nào vì user SSH sẽ khác nhau!
 
 #### Bước 3: Chọn Instance Type
 
@@ -698,13 +727,27 @@ Mở rộng phần **"Network settings"** → Click **"Edit"**:
 Mở **Git Bash** và chạy:
 
 ```bash
-# Kết nối SSH
+# Kết nối SSH - Ubuntu Server
 ssh -i ~/.ssh/earthquake-key.pem ubuntu@54.169.123.45
+
+# Kết nối SSH - Amazon Linux
+ssh -i ~/.ssh/earthquake-key.pem ec2-user@54.169.123.45
 ```
 
 **Thay `54.169.123.45` bằng Public IP của bạn!**
 
-### 5.2 Xử lý lỗi thường gặp
+### 5.2 Bảng User mặc định theo AMI
+
+| Hệ điều hành | User mặc định |
+|--------------|---------------|
+| Ubuntu | `ubuntu` |
+| Amazon Linux | `ec2-user` |
+| Amazon Linux 2023 | `ec2-user` |
+| Debian | `admin` |
+| CentOS | `centos` hoặc `ec2-user` |
+| RHEL | `ec2-user` |
+
+### 5.3 Xử lý lỗi thường gặp
 
 #### Lỗi: "WARNING: UNPROTECTED PRIVATE KEY FILE!"
 
@@ -748,7 +791,80 @@ ubuntu@ip-172-31-xx-xx:~$ _
 
 ## 6. Cài Đặt Docker Trên Server
 
-### 6.1 Cập nhật hệ thống
+Chọn hướng dẫn phù hợp với hệ điều hành bạn đã chọn:
+
+---
+
+### 🐧 Option A: Amazon Linux 2023 (ec2-user)
+
+#### 6.1A Cập nhật hệ thống
+
+```bash
+# Cập nhật tất cả packages
+sudo yum update -y
+```
+
+#### 6.2A Cài đặt Docker
+
+```bash
+# Cài đặt Docker
+sudo yum install -y docker
+
+# Khởi động Docker service
+sudo systemctl start docker
+
+# Bật Docker tự động chạy khi khởi động
+sudo systemctl enable docker
+
+# Kiểm tra Docker đã chạy
+sudo systemctl status docker
+```
+
+#### 6.3A Cài đặt Docker Compose
+
+```bash
+# Cài đặt Docker Compose plugin
+sudo mkdir -p /usr/local/lib/docker/cli-plugins
+sudo curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" -o /usr/local/lib/docker/cli-plugins/docker-compose
+sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+# Kiểm tra version
+docker compose version
+```
+
+**Hoặc cài Docker Compose standalone:**
+```bash
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+docker-compose --version
+```
+
+#### 6.4A Cấu hình Docker cho ec2-user
+
+```bash
+# Thêm ec2-user vào group docker
+sudo usermod -aG docker ec2-user
+
+# Áp dụng thay đổi (QUAN TRỌNG: phải logout và login lại!)
+exit
+```
+
+Sau đó SSH lại vào server:
+```bash
+ssh -i ~/.ssh/earthquake-key.pem ec2-user@YOUR_IP_ADDRESS
+```
+
+Kiểm tra Docker chạy được không cần sudo:
+```bash
+docker ps
+# Nếu không báo lỗi permission là OK
+```
+
+---
+
+### 🐧 Option B: Ubuntu Server (ubuntu)
+
+#### 6.1B Cập nhật hệ thống
 
 ```bash
 # Cập nhật package list
@@ -758,7 +874,7 @@ sudo apt update
 sudo apt upgrade -y
 ```
 
-### 6.2 Cài đặt Docker
+#### 6.2B Cài đặt Docker
 
 ```bash
 # Cài đặt các package cần thiết
@@ -775,7 +891,7 @@ sudo apt update
 sudo apt install -y docker-ce docker-ce-cli containerd.io
 ```
 
-### 6.3 Cài đặt Docker Compose
+#### 6.3B Cài đặt Docker Compose
 
 ```bash
 # Tải Docker Compose
@@ -788,7 +904,7 @@ sudo chmod +x /usr/local/bin/docker-compose
 docker-compose --version
 ```
 
-### 6.4 Cấu hình Docker cho user ubuntu
+#### 6.4B Cấu hình Docker cho user ubuntu
 
 ```bash
 # Thêm user ubuntu vào group docker
@@ -800,7 +916,7 @@ exit
 
 Sau đó SSH lại vào server:
 ```bash
-ssh -i ~/.ssh/earthquake-key.pem ubuntu@54.169.123.45
+ssh -i ~/.ssh/earthquake-key.pem ubuntu@YOUR_IP_ADDRESS
 ```
 
 Kiểm tra Docker chạy được không cần sudo:
@@ -808,6 +924,23 @@ Kiểm tra Docker chạy được không cần sudo:
 docker ps
 # Nếu không báo lỗi permission là OK
 ```
+
+---
+
+### 📋 So sánh Amazon Linux vs Ubuntu
+
+| Đặc điểm | Amazon Linux 2023 | Ubuntu 22.04 |
+|----------|-------------------|--------------|
+| User mặc định | `ec2-user` | `ubuntu` |
+| Package manager | `yum` / `dnf` | `apt` |
+| Cài Docker | `sudo yum install docker` | Thêm repo rồi `apt install` |
+| Free Tier | ✅ Có | ✅ Có |
+| Tối ưu cho AWS | ✅ Tốt hơn | ✅ Tốt |
+| Cộng đồng | Nhỏ hơn | Lớn hơn |
+
+💡 **Khuyến nghị**: 
+- Nếu mới bắt đầu → Dùng **Ubuntu** (tài liệu nhiều hơn)
+- Nếu muốn tối ưu AWS → Dùng **Amazon Linux**
 
 ---
 
@@ -940,7 +1073,7 @@ Hoặc sửa file `App.jsx`:
 
 ```bash
 # Sử dụng sed để thay đổi API URL
-sed -i 's/localhost/54.169.123.45/g' frontend/src/App.jsx
+sed -i 's/localhost/13.229.151.229/g' frontend/src/App.jsx
 ```
 
 ### 8.3 Build và chạy Docker containers
