@@ -1,18 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Statistic } from 'antd';
-import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Card, Row, Col, Statistic, Typography, Tooltip, Space, Tag } from 'antd';
+import { 
+  ArrowUpOutlined, 
+  ArrowDownOutlined,
+  ClockCircleOutlined,
+  SyncOutlined,
+  CheckCircleOutlined
+} from '@ant-design/icons';
 import { databaseAPI } from '../api';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
 
-const StatsCards = ({ dateRange }) => {
+dayjs.extend(relativeTime);
+
+const { Text } = Typography;
+
+const StatsCards = ({ dateRange, autoRefresh = false, refreshInterval = 60000 }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  useEffect(() => {
-    fetchStats();
-  }, [dateRange]);
-
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     setLoading(true);
+    setIsUpdating(true);
     try {
       const params = {};
       if (dateRange && dateRange[0] && dateRange[1]) {
@@ -22,62 +33,107 @@ const StatsCards = ({ dateRange }) => {
 
       const response = await databaseAPI.getStats(params);
       setStats(response.data);
+      setLastUpdate(new Date());
     } catch (error) {
       console.error('Failed to fetch stats', error);
     } finally {
       setLoading(false);
+      setIsUpdating(false);
     }
+  }, [dateRange]);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  // Auto refresh
+  useEffect(() => {
+    if (!autoRefresh) return;
+    
+    const interval = setInterval(fetchStats, refreshInterval);
+    return () => clearInterval(interval);
+  }, [autoRefresh, refreshInterval, fetchStats]);
+
+  // Format relative time
+  const getRelativeTime = (date) => {
+    if (!date) return 'Never';
+    return dayjs(date).fromNow();
   };
 
   if (!stats) return null;
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col xs={24} sm={12} md={6}>
-        <Card loading={loading}>
-          <Statistic
-            title="Total Earthquakes"
-            value={stats.total_count}
-            valueStyle={{ color: '#3f8600' }}
-            prefix={<ArrowUpOutlined />}
-          />
-        </Card>
-      </Col>
+    <div>
+      {/* Last Update Indicator */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'flex-end', 
+        marginBottom: 8,
+        alignItems: 'center'
+      }}>
+        <Space size="small">
+          {isUpdating ? (
+            <Tag icon={<SyncOutlined spin />} color="processing">
+              Updating...
+            </Tag>
+          ) : (
+            <Tooltip title={lastUpdate ? dayjs(lastUpdate).format('YYYY-MM-DD HH:mm:ss') : 'Never'}>
+              <Tag icon={<CheckCircleOutlined />} color="success">
+                <ClockCircleOutlined style={{ marginRight: 4 }} />
+                Updated {getRelativeTime(lastUpdate)}
+              </Tag>
+            </Tooltip>
+          )}
+        </Space>
+      </div>
 
-      <Col xs={24} sm={12} md={6}>
-        <Card loading={loading}>
-          <Statistic
-            title="Average Magnitude"
-            value={stats.avg_magnitude?.toFixed(2)}
-            precision={2}
-            valueStyle={{ color: '#1890ff' }}
-          />
-        </Card>
-      </Col>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} md={6}>
+          <Card loading={loading} hoverable>
+            <Statistic
+              title="Total Earthquakes"
+              value={stats.total_count}
+              valueStyle={{ color: '#3f8600' }}
+              prefix={<ArrowUpOutlined />}
+            />
+          </Card>
+        </Col>
 
-      <Col xs={24} sm={12} md={6}>
-        <Card loading={loading}>
-          <Statistic
-            title="Max Magnitude"
-            value={stats.max_magnitude?.toFixed(2)}
-            precision={2}
-            valueStyle={{ color: '#cf1322' }}
-            prefix={<ArrowUpOutlined />}
-          />
-        </Card>
-      </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card loading={loading} hoverable>
+            <Statistic
+              title="Average Magnitude"
+              value={stats.avg_magnitude?.toFixed(2)}
+              precision={2}
+              valueStyle={{ color: '#1890ff' }}
+            />
+          </Card>
+        </Col>
 
-      <Col xs={24} sm={12} md={6}>
-        <Card loading={loading}>
-          <Statistic
-            title="Average Depth (km)"
-            value={stats.avg_depth?.toFixed(2)}
-            precision={2}
-            valueStyle={{ color: '#722ed1' }}
-          />
-        </Card>
-      </Col>
-    </Row>
+        <Col xs={24} sm={12} md={6}>
+          <Card loading={loading} hoverable>
+            <Statistic
+              title="Max Magnitude"
+              value={stats.max_magnitude?.toFixed(2)}
+              precision={2}
+              valueStyle={{ color: '#cf1322' }}
+              prefix={<ArrowUpOutlined />}
+            />
+          </Card>
+        </Col>
+
+        <Col xs={24} sm={12} md={6}>
+          <Card loading={loading} hoverable>
+            <Statistic
+              title="Average Depth (km)"
+              value={stats.avg_depth?.toFixed(2)}
+              precision={2}
+              valueStyle={{ color: '#722ed1' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+    </div>
   );
 };
 

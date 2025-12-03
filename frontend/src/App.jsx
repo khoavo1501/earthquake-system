@@ -25,6 +25,8 @@ import SeasonalChart from './components/SeasonalChart';
 import PredictionChart from './components/PredictionChart';
 import ClusterMap from './components/ClusterMap';
 import StatsCards from './components/StatsCards';
+import RealtimeStatus from './components/RealtimeStatus';
+import LatestEarthquakes from './components/LatestEarthquakes';
 
 const { Header, Content, Sider } = Layout;
 const { RangePicker } = DatePicker;
@@ -55,6 +57,14 @@ function App() {
   const [loadModalVisible, setLoadModalVisible] = useState(false);
   const [loadYears, setLoadYears] = useState(1);
   const [loadingData, setLoadingData] = useState(false);
+  const [realtimeData, setRealtimeData] = useState(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState(60000); // 60 seconds
+
+  // Handle realtime data update
+  const handleRealtimeUpdate = (data) => {
+    setRealtimeData(data);
+  };
 
   // Quick filter for date range
   const setQuickDateRange = (days) => {
@@ -172,10 +182,18 @@ function App() {
             <StatsCards dateRange={dateRange} />
             
             <Row gutter={[16, 16]}>
-              <Col span={24}>
+              <Col span={16}>
                 <Card title="Earthquake Count Over Time">
                   <TimeSeriesChart {...commonProps} />
                 </Card>
+              </Col>
+              <Col span={8}>
+                <LatestEarthquakes 
+                  limit={8} 
+                  autoRefresh={autoRefresh} 
+                  refreshInterval={30000}
+                  compact={true}
+                />
               </Col>
             </Row>
 
@@ -378,6 +396,13 @@ function App() {
         </Header>
 
         <Content style={{ margin: '24px 16px', padding: 24, background: '#f0f2f5' }}>
+          {/* Realtime Status Bar */}
+          <RealtimeStatus 
+            autoRefresh={autoRefresh}
+            refreshInterval={refreshInterval}
+            onDataUpdate={handleRealtimeUpdate}
+          />
+
           {/* Quick Date Filters */}
           <Card 
             style={{ marginBottom: 16 }}

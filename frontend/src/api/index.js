@@ -10,6 +10,13 @@ export const databaseAPI = {
   getEarthquakes: (params) => axios.get(`${DATABASE_API_URL}/api/earthquakes`, { params }),
   getEarthquake: (id) => axios.get(`${DATABASE_API_URL}/api/earthquakes/${id}`),
   getStats: (params) => axios.get(`${DATABASE_API_URL}/api/earthquakes/stats`, { params }),
+  getLatest: (limit = 10) => axios.get(`${DATABASE_API_URL}/api/earthquakes`, { 
+    params: { 
+      limit, 
+      sort_by: 'time', 
+      sort_order: 'desc' 
+    } 
+  }),
 };
 
 // Analysis API
