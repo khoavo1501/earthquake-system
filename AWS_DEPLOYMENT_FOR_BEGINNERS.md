@@ -813,7 +813,7 @@ docker ps
 
 ## 7. Upload Code Lên Server
 
-### Cách 1: Sử dụng Git (Khuyến nghị)
+### Cách 1: Sử dụng Git (Khuyến nghị)z`
 
 #### Bước 1: Push code lên GitHub
 
@@ -862,11 +862,21 @@ cd earthquake-system
 Trên máy local (Windows), mở Git Bash:
 
 ```bash
-# Copy toàn bộ thư mục project lên server
-scp -i ~/.ssh/earthquake-key.pem -r /d/WorkSpace/KPDL/DO-AN-CUOI-KY/earthquake-system ubuntu@54.169.123.45:~/
+# Cách 2.1: Dùng đường dẫn Windows (khuyến nghị)
+scp -i ~/.ssh/earthquake-key.pem -r "D:/WorkSpace/KPDL/DO-AN-CUOI-KY/earthquake-system" ubuntu@54.169.123.45:~/
+
+# Cách 2.2: CD vào thư mục cha rồi copy
+cd "/d/WorkSpace/KPDL/DO-AN-CUOI-KY"
+scp -i ~/.ssh/earthquake-key.pem -r earthquake-system ubuntu@54.169.123.45:~/
+
+# Cách 2.3: Copy từ thư mục hiện tại
+cd "/d/WorkSpace/KPDL/DO-AN-CUOI-KY/earthquake-system"
+scp -i ~/.ssh/earthquake-key.pem -r . ubuntu@54.169.123.45:~/earthquake-system
 ```
 
-⚠️ **Lưu ý**: Cách này sẽ copy cả `node_modules` nên sẽ lâu. Nên dùng Git.
+⚠️ **Lưu ý**: 
+- Cách này sẽ copy cả `node_modules` nên sẽ lâu. Nên dùng Git.
+- Trên Windows Git Bash, dùng `"D:/path"` thay vì `/d/path` để tránh lỗi.
 
 ### Cách 3: Sử dụng FileZilla (GUI)
 
