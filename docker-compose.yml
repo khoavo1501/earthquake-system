@@ -1,0 +1,158 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: earthquake-postgres
+    environment:
+      POSTGRES_DB: earthquake_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./config/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - earthquake-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: earthquake-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - earthquake-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Data Ingestion Service
+  data-ingestion:
+    build:
+      context: ./services/data-ingestion
+      dockerfile: Dockerfile
+    container_name: earthquake-data-ingestion
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres123@postgres:5432/earthquake_db
+      USGS_API_URL: https://earthquake.usgs.gov/fdsnws/event/1/query
+      FETCH_INTERVAL: 300
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - earthquake-network
+    restart: unless-stopped
+
+  # Database API Service
+  database-api:
+    build:
+      context: ./services/database-api
+      dockerfile: Dockerfile
+    container_name: earthquake-database-api
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres123@postgres:5432/earthquake_db
+      REDIS_URL: redis://redis:6379
+      PORT: 8001
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - earthquake-network
+    restart: unless-stopped
+
+  # Data Analysis Service
+  data-analysis:
+    build:
+      context: ./services/data-analysis
+      dockerfile: Dockerfile
+    container_name: earthquake-data-analysis
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres123@postgres:5432/earthquake_db
+      PORT: 8002
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - earthquake-network
+    restart: unless-stopped
+
+  # Clustering Service
+  clustering:
+    build:
+      context: ./services/clustering
+      dockerfile: Dockerfile
+    container_name: earthquake-clustering
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres123@postgres:5432/earthquake_db
+      PORT: 8003
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - earthquake-network
+    restart: unless-stopped
+
+  # Prediction Service
+  prediction:
+    build:
+      context: ./services/prediction
+      dockerfile: Dockerfile
+    container_name: earthquake-prediction
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres123@postgres:5432/earthquake_db
+      PORT: 8004
+    ports:
+      - "8004:8004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - earthquake-network
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: earthquake-frontend
+    environment:
+      REACT_APP_DATABASE_API_URL: http://localhost:8001
+      REACT_APP_ANALYSIS_API_URL: http://localhost:8002
+      REACT_APP_CLUSTERING_API_URL: http://localhost:8003
+      REACT_APP_PREDICTION_API_URL: http://localhost:8004
+    ports:
+      - "3000:3000"
+    depends_on:
+      - database-api
+      - data-analysis
+      - clustering
+      - prediction
+    networks:
+      - earthquake-network
+    restart: unless-stopped
+
+networks:
+  earthquake-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
